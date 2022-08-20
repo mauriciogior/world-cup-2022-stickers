@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500&display=swap" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+        <style>
+            body {
+                font-family: 'Roboto', sans-serif;
+                user-select: none;
+                padding: 20px !important;
+            }
+
+            h1 {
+                margin-bottom: 10px;
+            }
+
+            hr {
+                margin-top: 20px;
+            }
+
+            ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            ul li {
+                display: inline-flex;
+                padding: 10px;
+                border: 1px solid;
+                border-radius: 100px;
+                width: 45px;
+                height: 45px;
+                justify-content: center;
+                margin: 5px;
+                cursor: pointer;
+            }
+
+            ul li.single,
+            ul li.repeated {
+                background-color: #2ecc71;
+                color: #fff;
+                position: relative;
+            }
+
+            ul li.repeated:after {
+                color: #e74c3c;
+                position: absolute;
+                content: '+';
+                top: -4px;
+                right: -4px;
+                background-color: #fff;
+                border-radius: 20px;
+                width: 20px;
+                height: 20px;
+                line-height: 14px;
+                display: flex;
+                justify-content: center;
+                border: 2px solid #2ecc71;
+            }
+
+            ul.missing li:not(.missing) {
+                display: none;
+            }
+            
+            ul.repeated li:not(.repeated) {
+                display: none;
+            }
+
+            [v-cloak] {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div class="btn-group" v-cloak>
+                <button class="btn" :class="filter == 'all' ? 'btn-primary' : 'btn-outline-primary'" @click="filter = 'all'">All</button>
+                <button class="btn" :class="filter == 'missing' ? 'btn-primary' : 'btn-outline-primary'" @click="filter = 'missing'">Missing ({{countMissing}})</button>
+                <button class="btn" :class="filter == 'repeated' ? 'btn-primary' : 'btn-outline-primary'" @click="filter = 'repeated'">Repeated ({{countRepeated}})</button>
+            </div>
+            <div v-for="team in teams" style="margin-top: 20px;" v-cloak>
+                <h1>{{team}}</h1>
+                <ul :class="filter">
+                    <li v-for="i in teamAmount(team)" :class="getClass(team, i)" @click="pushState(team, i)">{{i}}</li>
+                </ul>
+                <hr/>
+            </div>
+        </div>
+    </body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.7.9/vue.min.js"></script>
+    <script>
+        new Vue({
+		    el: "#app",
+            data: {
+                teams: [
+                    "FWC", "QAT", "ECU", "SEN", "NED", "ENG", "IRN", "USA",
+                    "WAL", "ARG", "KSA", "MEX", "POL", "FRA", "AUS", "DEN",
+                    "TUN", "ESP", "CRC", "GER", "JPN", "BEL", "CAN", "MAR",
+                    "CRO", "BRA", "SRB", "SUI", "CMR", "POR", "GHA", "URU",
+                    "KOR", "C", "00"
+                ],
+                state: {},
+                filter: "all",
+                total: 678
+            },
+            mounted: function() {
+                this.loadState();
+            },
+            computed: {
+                countMissing: function() {
+                    var missing = 678;
+                    var self = this;
+                    Object.keys(this.state).forEach(function(team) {
+                        Object.keys(self.state[team]).forEach(function(cardNo) {
+                            if (self.state[team][cardNo] != 0) missing--;
+                        });
+                    });
+                    return missing;
+                },
+                countRepeated: function() {
+                    var repeated = 0;
+                    var self = this;
+                    Object.keys(this.state).forEach(function(team) {
+                        Object.keys(self.state[team]).forEach(function(cardNo) {
+                            if (self.state[team][cardNo] == 2) repeated++;
+                        });
+                    });
+                    return repeated;
+                }
+            },
+            methods: {
+                loadState: function() {
+                    var state = localStorage.getItem("state");
+                    if (state) this.state = JSON.parse(state);
+                },
+                saveState: function() {
+                    localStorage.setItem("state", JSON.stringify(this.state));
+                },
+                getState: function(team, cardNo) {
+                    if (!this.state[team]) return 0;
+                    if (!this.state[team]["card-" + cardNo]) return 0;
+                    return this.state[team]["card-" + cardNo];
+                },
+                pushState: function(team, cardNo) {
+                    if (!this.state[team]) this.state[team] = {};
+                    var val = this.state[team]["card-" + cardNo] || 0;
+                    if (val < 2) {
+                        this.$set(this.state[team], "card-" + cardNo, val + 1);
+                    } else {
+                        this.$set(this.state[team], "card-" + cardNo, 0);
+                    }
+                    this.saveState();
+                    this.$forceUpdate();
+                },
+                getClass: function(team, cardNo) {
+                    var val = this.getState(team, cardNo);
+                    if (val == 0) return "missing";
+                    else if (val == 1) return "single";
+                    else return "repeated";
+                },
+                teamAmount: function(team) {
+                    if (team == "FWC") return 29;
+                    if (team == "C") return 8;
+                    if (team == "00") return 1;
+                    return 20;
+                }
+            }
+        });
+    </script>
+</html>
